@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+        "baseUrl": ".",
+        "paths": { "*": ["types/*"] },
+        "module": "commonjs",
+        "target": "es6",
+        "outDir": "./dist",
+        "lib": ["es6", "dom"],
+        "sourceMap": true,
+        "rootDir": "babel-project"
+    },
+    "include": [
+      "babel-project/**/*"
+    ],
+    "exclude": ["node_modules"]
+}
