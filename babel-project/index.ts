@@ -1,8 +1,19 @@
-import { StringLiteral, stringLiteral, unaryExpression, numericLiteral, isImportSpecifier, importDeclaration, importDefaultSpecifier } from '@babel/types';
+import {
+    StringLiteral,
+    stringLiteral,
+    unaryExpression,
+    numericLiteral,
+    isImportSpecifier,
+    importDeclaration,
+    importDefaultSpecifier,
+    ImportSpecifier,
+    ImportDeclaration
+} from '@babel/types';
 import { isReactClass, isStatelessComponent } from './util';
+import { Options } from './types'
 
 export default () => {
-    const defaultOptions = {
+    const defaultOptions: Options = {
         imports: {
             ignoreLibraries: [],
             ignoreFilenames: '',
@@ -19,12 +30,11 @@ export default () => {
             onlyProduction: false
         }
     };
-    let globalOptions = null;
+    let globalOptions: Options = null;
+    const STYLE_NAME_SPACE: string = 'StyleSheet';
+    const STYLE_CREATE_METHOD: string = 'create';
 
-    const styleNameSpace:string = 'StyleSheet';
-    const styleCreateMethod:string = 'create';
-
-    function remove(path) {
+    function remove(path): void {
         if (path.parentPath.type === 'ConditionalExpression') {
             path.replaceWith(unaryExpression('void', numericLiteral(0)));
         } else {
@@ -32,21 +42,25 @@ export default () => {
         }
     }
 
-    function isInside(scope, regex) {
-        const filename = scope.hub.file?.opts?.filename
+    function isIgnore(scope, regex: RegExp): boolean {
+        const filename: string = scope.hub?.file?.opts?.filename;
         if (!filename) {
-          return true
+            return true;
         }
         if (!regex) {
-          return false
+            return false;
         }
-        return regex.test(filename)
+        return (regex as RegExp).test(filename);
     }
 
-    function isProptypesRemove(path) {
+    function isProptypesRemove(path): boolean {
         const { remove, ignoreFilenames, onlyProduction } = globalOptions.propTypes;
-        if (!remove || isInside(path.scope, ignoreFilenames)) return false;
-        if (onlyProduction) return process.env.NODE_ENV === "production";
+        if (!remove || isIgnore(path.scope, ignoreFilenames as RegExp)) {
+            return false;
+        }
+        if (onlyProduction) {
+            return process.env.NODE_ENV === "production";
+        }
         return true;
     }
 
@@ -55,7 +69,9 @@ export default () => {
             const { identifier, styles } = options;
             const parentPath = path.parentPath;
             if (parentPath.key !== 'init') {
-                const propertyKey = `${identifier} ${parentPath.node.key.name}`;
+                const propertyKeyName = parentPath.node.key?.name;
+                if (!propertyKeyName) return;
+                const propertyKey = `${identifier} ${propertyKeyName}`;
                 if (!styles.has(propertyKey)) {
                     remove(parentPath);
                 }
@@ -63,26 +79,26 @@ export default () => {
         },
     };
 
-    function normalizeOptions(options) {
+    function normalizeOptions(options): void {
         const { imports, styles, propTypes } = options;
         if (!Array.isArray(imports.customImports)) {
-            imports.customImports = [imports.customImports]
+            imports.customImports = [imports.customImports];
         }
         if (!Array.isArray(imports.ignoreLibraries)) {
-            imports.ignoreLibraries = [imports.ignoreLibraries]
+            imports.ignoreLibraries = [imports.ignoreLibraries];
         }
         if (imports.ignoreFilenames) {
-            imports.ignoreFilenames = new RegExp(imports.ignoreFilenames.join('|'), 'i')
+            imports.ignoreFilenames = new RegExp(imports.ignoreFilenames.join('|'), 'i');
         } else {
             imports.ignoreFilenames = '';
         }
         if (styles.ignoreFilenames) {
-            styles.ignoreFilenames = new RegExp(styles.ignoreFilenames.join('|'), 'i')
+            styles.ignoreFilenames = new RegExp(styles.ignoreFilenames.join('|'), 'i');
         } else {
             styles.ignoreFilenames = '';
         }
         if (propTypes.ignoreFilenames) {
-            propTypes.ignoreFilenames = new RegExp(propTypes.ignoreFilenames.join('|'), 'i')
+            propTypes.ignoreFilenames = new RegExp(propTypes.ignoreFilenames.join('|'), 'i');
         } else {
             propTypes.ignoreFilenames = '';
         }
@@ -93,21 +109,20 @@ export default () => {
         visitor: {
             Program(programPath, state) {
                 if (!globalOptions) {
-                    const options: Object = state.opts;
-                    globalOptions = Object.assign({}, defaultOptions, options);
+                    const options: Options = state.opts;
+                    globalOptions = Object.assign({}, defaultOptions, options) as Options;
                     normalizeOptions(globalOptions);
-                    console.log('enter======>', state.filename)
                 }
             },
             ImportDeclaration(path) {
                 const { node, scope } = path;
-                const specifiers = node.specifiers;
-                const sourceValue = node.source.value;
-                const imports = globalOptions.imports;
-                if (isInside(path.scope, globalOptions.imports.ignoreFilenames)) return;
+                const specifiers: ImportSpecifier[] = node.specifiers;
+                const sourceValue: string = node.source.value;
+                const imports: Record<string, any> = globalOptions.imports;
+                if (isIgnore(path.scope, globalOptions.imports.ignoreFilenames as RegExp)) return;
                 if (imports.remove) {
                     for (let i = specifiers.length - 1; i >= 0; i--) {
-                        const name = specifiers[i].local.name;
+                        const name: string = specifiers[i].local.name;
                         const binding = scope.getBinding(name);
                         if (binding?.referencePaths?.length === 0 && !imports.ignoreLibraries.includes(sourceValue)) {
                             remove(binding.path);
@@ -120,12 +135,12 @@ export default () => {
                 if (imports.customImports.length) {
                     const customImport = imports.customImports.find(imports => imports.libraryName === sourceValue);
                     if (customImport && isImportSpecifier(specifiers[0])) {
-                        const newImports = specifiers.map(specifier => {
-                            const localName = specifier.local.name;
-                            const customUrl = customImport.customMapping?.[localName] ?? `${customImport.libraryDirectory}/${localName}`;
+                        const newImports: ImportDeclaration[] = specifiers.map(specifier => {
+                            const localName: string = specifier.local.name;
+                            const customUrl: string = customImport.customMapping?.[localName] ?? `${customImport.libraryDirectory ?? 'lib'}/${localName}`;
                             return (
                                 importDeclaration([importDefaultSpecifier(specifier.local)],
-                                stringLiteral(`${customImport.libraryName}/${customUrl}`))
+                                    stringLiteral(`${customImport.libraryName}/${customUrl}`))
                             )
                         });
                         path.replaceWithMultiple(newImports);
@@ -162,7 +177,7 @@ export default () => {
                 if (node.left.computed || !node.left.property || node.left.property.name !== 'propTypes') {
                     return;
                 }
-                const className = node.left.object.name;
+                const className: string = node.left.object.name;
                 const binding = scope.getBinding(className);
                 if (!binding) return;
                 if (binding.path.isClassDeclaration()) {
@@ -172,21 +187,21 @@ export default () => {
                     }
                 } else if (isStatelessComponent(binding.path)) {
                     remove(path);
-                } 
+                }
             },
             VariableDeclarator(path) {
-                if (!globalOptions.styles.remove || isInside(path.scope, globalOptions.styles.ignoreFilenames)) return;
+                if (!globalOptions.styles.remove || isIgnore(path.scope, globalOptions.styles.ignoreFilenames as RegExp)) return;
                 const { node, scope } = path;
-                if (node.init?.callee?.object?.name === styleNameSpace && node.init?.callee?.property?.name === styleCreateMethod) {
-                    const source = path.scope.getBinding(styleNameSpace)?.path?.parentPath?.get('source');
+                if (node.init?.callee?.object?.name === STYLE_NAME_SPACE && node.init?.callee?.property?.name === STYLE_CREATE_METHOD) {
+                    const source = path.scope.getBinding(STYLE_NAME_SPACE)?.path?.parentPath?.get('source');
                     if ((source?.node as StringLiteral)?.value !== 'react-native') return;
-                    const stylesIdentifier = node.id?.name;
+                    const stylesIdentifier: string = node.id?.name;
                     const binding = scope.getBinding(stylesIdentifier);
-                    let hasSkipCollect:Boolean = false;
-                    const stylesCollect:Set<String> = new Set();
+                    let hasSkipCollect: boolean = false;
+                    const stylesCollect: Set<string> = new Set();
                     binding?.referencePaths?.forEach(item => {
                         if (item.container?.property) {
-                            const propertyKey:string = `${stylesIdentifier} ${item.container.property.name}`;
+                            const propertyKey: string = `${stylesIdentifier} ${item.container.property.name}`;
                             stylesCollect.add(propertyKey);
                         } else {
                             hasSkipCollect = true;
@@ -194,7 +209,7 @@ export default () => {
                     })
                     if (!hasSkipCollect) {
                         path.traverse(collectNestedObjects, {
-                            identifier: stylesIdentifier, 
+                            identifier: stylesIdentifier,
                             styles: stylesCollect
                         });
                     }

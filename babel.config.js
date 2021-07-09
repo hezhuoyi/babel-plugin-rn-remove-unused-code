@@ -5,22 +5,14 @@ const plugins = [
     './dist/index.js',
     {
       imports: {
-        ignoreLibraries: 'react',
+        ignoreLibraries: ['react'],
         remove: true,
         customImports: {
-          libraryName: '@ctrip/ztbusiness',
-          libraryDirectory: 'src/Components',
+          libraryName: 'antd',
           customMapping: {
-            'RobTicketComponent': 'src/Components/RobTicketCommend',
-            'WeixinDiversionBanner': 'src/Components/WeixinDiversion/WeixinDiversionBanner',
-            'WeixinDiversionToast': 'src/Components/WeixinDiversion/WeixinDiversionToast',
-            'StudentCashbackToast': 'src/Components/StudentCashback/StudentCashbackToast',
-            'UnlockStudentCashbackToast': 'src/Components/StudentCashback/UnlockStudentCashbackToast',
-            'FreeVipSavingsBanner': 'src/Components/FreeVipSavings',
-            'SuperCodeNoticeBar': 'src/Components/SuperCode',
-            'SuperCodeNoticeToast': 'src/Components/SuperCode/SuperCodeToast'
+            'Button': 'customPath/Button'
           }
-        },
+      }
       },
       styles: {
         remove: true,
