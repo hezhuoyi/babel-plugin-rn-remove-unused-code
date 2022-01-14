@@ -1,6 +1,6 @@
 {
   "name": "babel-plugin-rn-remove-unused-code",
-  "version": "1.0.3",
+  "version": "1.0.9",
   "description": "babel-plugin-rn-remove-unused-code",
   "main": "dist/index.js",
   "files": [

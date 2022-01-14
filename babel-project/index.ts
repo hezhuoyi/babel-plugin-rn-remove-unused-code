@@ -10,24 +10,24 @@ import {
     ImportDeclaration
 } from '@babel/types';
 import { isReactClass, isStatelessComponent } from './util';
-import { Options } from './types'
+import { Options } from './types';
 
 export default () => {
     const defaultOptions: Options = {
         imports: {
-            ignoreLibraries: [],
+            ignoreLibraries: ['react'],
             ignoreFilenames: '',
-            remove: false,
-            customImports: []
+            remove: true,
+            customImports: [],
         },
         styles: {
             ignoreFilenames: '',
-            remove: false,
+            remove: true,
         },
         propTypes: {
             ignoreFilenames: '',
-            remove: false,
-            onlyProduction: false
+            remove: true,
+            onlyProduction: true,
         }
     };
     let globalOptions: Options = null;
@@ -81,27 +81,17 @@ export default () => {
 
     function normalizeOptions(options): void {
         const { imports, styles, propTypes } = options;
+        if (!imports.customImports) imports.customImports = [];
         if (!Array.isArray(imports.customImports)) {
             imports.customImports = [imports.customImports];
         }
+        if (!imports.ignoreLibraries) imports.ignoreLibraries = ['react'];
         if (!Array.isArray(imports.ignoreLibraries)) {
             imports.ignoreLibraries = [imports.ignoreLibraries];
         }
-        if (imports.ignoreFilenames) {
-            imports.ignoreFilenames = new RegExp(imports.ignoreFilenames.join('|'), 'i');
-        } else {
-            imports.ignoreFilenames = '';
-        }
-        if (styles.ignoreFilenames) {
-            styles.ignoreFilenames = new RegExp(styles.ignoreFilenames.join('|'), 'i');
-        } else {
-            styles.ignoreFilenames = '';
-        }
-        if (propTypes.ignoreFilenames) {
-            propTypes.ignoreFilenames = new RegExp(propTypes.ignoreFilenames.join('|'), 'i');
-        } else {
-            propTypes.ignoreFilenames = '';
-        }
+        imports.ignoreFilenames = imports.ignoreFilenames ? new RegExp(imports.ignoreFilenames.join('|'), 'i') : '';
+        styles.ignoreFilenames = styles.ignoreFilenames ? new RegExp(styles.ignoreFilenames.join('|'), 'i') : '';
+        propTypes.ignoreFilenames = propTypes.ignoreFilenames ? new RegExp(propTypes.ignoreFilenames.join('|'), 'i') : '';
     }
 
     return {
